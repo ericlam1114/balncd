@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
+import { TransactionDetailsDialog } from './transaction-details';
 
 export function TransactionItem({ transaction }) {
   const [category, setCategory] = useState(transaction.category);
   const [updating, setUpdating] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const { toast } = useToast();
 
   // Get display name for merchant
@@ -20,7 +22,7 @@ export function TransactionItem({ transaction }) {
   const isIncome = amount < 0; // Plaid uses negative for credits/income
   const formattedAmount = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: transaction.isoCurrencyCode || 'USD',
   }).format(Math.abs(amount));
 
   // Common categories
@@ -70,6 +72,11 @@ export function TransactionItem({ transaction }) {
     }
   };
 
+  // Handle transaction update from dialog
+  const handleTransactionUpdate = (updatedTransaction) => {
+    setCategory(updatedTransaction.category);
+  };
+
   // Get transaction icon based on category
   const getTransactionIcon = (category) => {
     switch (category.toLowerCase()) {
@@ -105,42 +112,59 @@ export function TransactionItem({ transaction }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between p-3 rounded-md bg-white border"
-    >
-      <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
-          <span role="img" aria-label={category}>
-            {getTransactionIcon(category)}
-          </span>
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between p-3 rounded-md bg-white border cursor-pointer hover:bg-gray-50"
+        onClick={() => setShowDetails(true)}
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
+            <span role="img" aria-label={category}>
+              {getTransactionIcon(category)}
+            </span>
+          </div>
+          <div>
+            <h4 className="font-medium text-sm">{displayName}</h4>
+            <p className="text-xs text-gray-500">
+              {transaction.pending ? 'Pending • ' : ''}
+              {transaction.date}
+            </p>
+          </div>
         </div>
-        <div>
-          <h4 className="font-medium text-sm">{displayName}</h4>
-          <p className="text-xs text-gray-500">
-            {transaction.pending ? 'Pending • ' : ''}
-            {transaction.date}
+        <div className="flex items-center space-x-4">
+          <Select 
+            disabled={updating} 
+            value={category} 
+            onValueChange={handleCategoryChange}
+            // Stop propagation to prevent dialog from opening when selecting category
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat} className="text-xs">
+                  {getTransactionIcon(cat)} {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className={`font-medium text-sm ${isIncome ? 'text-green-600' : ''}`}>
+            {isIncome ? '+' : ''}{formattedAmount}
           </p>
         </div>
-      </div>
-      <div className="flex items-center space-x-4">
-        <Select disabled={updating} value={category} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat} className="text-xs">
-                {getTransactionIcon(cat)} {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className={`font-medium text-sm ${isIncome ? 'text-green-600' : ''}`}>
-          {isIncome ? '+' : ''}{formattedAmount}
-        </p>
-      </div>
-    </motion.div>
+      </motion.div>
+      
+      <TransactionDetailsDialog 
+        transaction={transaction} 
+        isOpen={showDetails} 
+        onClose={() => setShowDetails(false)}
+        onUpdate={handleTransactionUpdate}
+      />
+    </>
   );
 }

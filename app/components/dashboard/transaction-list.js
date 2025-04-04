@@ -1,19 +1,102 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { useTransactions } from '@/hooks/use-transactions';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { TransactionItem } from './transaction-item';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Empty } from './empty';
 
 const ITEMS_PER_PAGE = 20;
 
-export function TransactionList() {
+export function TransactionList({ userId, filters = {} }) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const { transactions, loading } = useTransactions({ limitCount: 100 });
   
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!userId) return;
+      
+      setLoading(true);
+      try {
+        // Build base query
+        let transactionsQuery = query(
+          collection(db, 'transactions'),
+          where('userId', '==', userId),
+          orderBy('date', 'desc')
+        );
+        
+        // Apply filters if provided
+        if (filters.startDate) {
+          transactionsQuery = query(
+            transactionsQuery,
+            where('date', '>=', filters.startDate)
+          );
+        }
+        
+        if (filters.endDate) {
+          transactionsQuery = query(
+            transactionsQuery,
+            where('date', '<=', filters.endDate)
+          );
+        }
+        
+        // Execute the query
+        const querySnapshot = await getDocs(transactionsQuery);
+        let filteredData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        
+        // Apply client-side filters
+        if (filters.categories && filters.categories.length > 0) {
+          filteredData = filteredData.filter(tx => 
+            filters.categories.includes(tx.category)
+          );
+        }
+        
+        if (filters.accountIds && filters.accountIds.length > 0) {
+          filteredData = filteredData.filter(tx => 
+            filters.accountIds.includes(tx.accountId)
+          );
+        }
+        
+        if (filters.searchTerm) {
+          const searchLower = filters.searchTerm.toLowerCase();
+          filteredData = filteredData.filter(tx => 
+            tx.name.toLowerCase().includes(searchLower) || 
+            (tx.merchantName && tx.merchantName.toLowerCase().includes(searchLower))
+          );
+        }
+        
+        if (filters.amountMin) {
+          filteredData = filteredData.filter(tx => 
+            Math.abs(tx.amount) >= parseFloat(filters.amountMin)
+          );
+        }
+        
+        if (filters.amountMax) {
+          filteredData = filteredData.filter(tx => 
+            Math.abs(tx.amount) <= parseFloat(filters.amountMax)
+          );
+        }
+        
+        setTransactions(filteredData);
+        setPage(1); // Reset to first page when filters change
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [userId, filters]);
+
   const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
   const paginatedTransactions = transactions.slice(
     (page - 1) * ITEMS_PER_PAGE, 
@@ -41,7 +124,9 @@ export function TransactionList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Recent Transactions</CardTitle>
+        <CardTitle className="text-lg">
+          {loading ? 'Loading Transactions...' : `${transactions.length} Transactions`}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -49,9 +134,10 @@ export function TransactionList() {
             <div className="animate-spin h-6 w-6 border-4 border-blue-500 rounded-full border-t-transparent"></div>
           </div>
         ) : transactions.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-muted-foreground">No transactions found</p>
-          </div>
+          <Empty 
+            title="No Transactions Found" 
+            description="Try adjusting your filters or connecting more accounts."
+          />
         ) : (
           <div className="space-y-6">
             <AnimatePresence>

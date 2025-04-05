@@ -21,10 +21,10 @@ export function ChatInterface({ onWorkspaceUpdate }) {
   // Sample questions to help the user get started
   const sampleQuestions = [
     "How much did I spend on dining last month?",
-    "Help me prepare for quarterly taxes",
     "What are my biggest expense categories?",
-    "Show me my income trends",
-    "How can I optimize my budget?"
+    "How much should I pay for quarterly taxes in Q2?",
+    "Help me prepare for quarterly taxes",
+    "Show me my income trends"
   ];
 
   useEffect(() => {
@@ -35,28 +35,188 @@ export function ChatInterface({ onWorkspaceUpdate }) {
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  // Update your handleSubmit function to be more flexible
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
+  const userMessage = { role: 'user', content: input };
+  setMessages((prev) => [...prev, userMessage]);
+  const question = input;
+  setInput('');
+  setLoading(true);
 
-    // Simulate processing the message
+  // First, analyze the question using an OpenAI API call to categorize it
+  try {
+    const analysisResponse = await fetch('/api/analyze-question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    
+    if (!analysisResponse.ok) throw new Error('Failed to analyze question');
+    
+    const { category, isCalculation } = await analysisResponse.json();
+    
+    // Handle different categories of questions
+    if (category === 'tax') {
+      if (isCalculation) {
+        // Use your existing tax calculation logic
+        await handleTaxQuery(question);
+      } else {
+        // For informational tax questions (like deadlines)
+        await handleTaxInformation(question);
+      }
+    } else {
+      // Use your existing approach for non-tax questions
+      setTimeout(() => {
+        const response = processUserInput(question);
+        setMessages((prev) => [...prev, { 
+          role: 'assistant', 
+          content: response.message 
+        }]);
+        
+        if (response.workspaceContent) {
+          onWorkspaceUpdate(response.workspaceContent);
+        }
+        
+        setLoading(false);
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Error processing question:', error);
+    // Fallback to your current approach
     setTimeout(() => {
-      const response = processUserInput(input);
-      setMessages((prev) => [...prev, { role: 'assistant', content: response.message }]);
+      const response = processUserInput(question);
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: response.message 
+      }]);
       
-      // If the response has workspace content, update the workspace
       if (response.workspaceContent) {
         onWorkspaceUpdate(response.workspaceContent);
       }
       
       setLoading(false);
     }, 1000);
+  }
+};
+
+// New function to handle informational tax questions
+const handleTaxInformation = async (question) => {
+  try {
+    const response = await fetch('/api/tax-information', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+    
+    if (!response.ok) throw new Error('Failed to get tax information');
+    
+    const data = await response.json();
+    
+    setMessages((prev) => [...prev, { 
+      role: 'assistant', 
+      content: data.answer 
+    }]);
+    
+    // If there's visualization data, update the workspace
+    if (data.visualizationData) {
+      onWorkspaceUpdate({
+        type: 'taxInfo',
+        title: data.title || 'Tax Information',
+        data: data.visualizationData
+      });
+    }
+  } catch (error) {
+    console.error('Tax information error:', error);
+    setMessages((prev) => [...prev, { 
+      role: 'assistant', 
+      content: 'I\'m sorry, I couldn\'t find information about that specific tax question. Would you like me to help with something else?' 
+    }]);
+  } finally {
+    setLoading(false);
+  }
+};
+  
+  // Add the tax query handler function
+  const handleTaxQuery = async (question) => {
+    try {
+      // Extract state and filing status if mentioned
+      let state = null;
+      let filingStatus = 'Single';
+      let period = 'Q2'; // Default to current quarter
+      
+      // Simple extraction logic - in a real app, use the AI to extract these
+      const stateMatch = question.match(/in\s+([A-Z]{2}|[A-Za-z]+)/);
+      if (stateMatch) state = stateMatch[1];
+      
+      if (question.toLowerCase().includes('married')) filingStatus = 'Married';
+      if (question.toLowerCase().includes('q1')) period = 'Q1';
+      if (question.toLowerCase().includes('q3')) period = 'Q3';
+      if (question.toLowerCase().includes('q4')) period = 'Q4';
+      
+      // Call tax estimation API
+      const response = await fetch('/api/tax-estimation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          state,
+          filingStatus,
+          period
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to calculate tax estimation');
+      }
+      
+      const data = await response.json();
+      
+      // Format a response message
+      const responseMessage = `Based on your financial data for ${period}, I estimate you should pay ${
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(data.taxEstimation.estimatedTax)
+      } for your quarterly estimated taxes. This includes ${
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(data.taxEstimation.federalTax)
+      } in federal taxes and ${
+        new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(data.taxEstimation.stateTax)
+      } in state taxes. ${data.taxEstimation.explanation}`;
+      
+      setMessages((prev) => [...prev, { role: 'assistant', content: responseMessage }]);
+      
+      // Update workspace with tax visualization
+      onWorkspaceUpdate({
+        type: 'taxes',
+        title: `${period} Tax Estimation`,
+        data: {
+          ...data.taxEstimation,
+          period,
+          state: data.state,
+          filingStatus: data.filingStatus
+        }
+      });
+      
+    } catch (error) {
+      console.error('Tax query error:', error);
+      setMessages((prev) => [...prev, { 
+        role: 'assistant', 
+        content: 'I encountered an error calculating your estimated taxes. Please try again or provide more details about your tax situation.' 
+      }]);
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   // Simple function to process user input (this would be replaced with actual AI implementation)
   const processUserInput = (input) => {

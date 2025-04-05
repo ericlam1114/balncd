@@ -1,33 +1,58 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../src/components/ui/card';
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Cell, ResponsiveContainer } from 'recharts';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../src/components/ui/tabs';
-import { format, subDays } from 'date-fns';
-
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../src/components/ui/card";
+import {
+  PieChart,
+  Pie,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Cell,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../../src/components/ui/tabs";
+import { format, subDays } from "date-fns";
+import { TaxWorkspace } from "./tax-workspace";
+import { TaxInfoWorkspace } from "./tax-info-workspace";
 // Colors for charts
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 export function Workspace({ content }) {
   const [activeContent, setActiveContent] = useState(null);
-  
+
   useEffect(() => {
     if (content) {
       setActiveContent(content);
     }
   }, [content]);
-  
+
   if (!activeContent) {
     return (
       <div className="h-full flex items-center justify-center border rounded-lg p-8">
         <div className="text-center max-w-md">
           <h3 className="text-xl font-medium mb-2">Your Financial Workspace</h3>
           <p className="text-gray-500 mb-4">
-            Ask questions in the chat to analyze your finances. Financial data and visualizations will appear here.
+            Ask questions in the chat to analyze your finances. Financial data
+            and visualizations will appear here.
           </p>
           <div className="text-sm text-left bg-blue-50 p-4 rounded-lg">
-            <p className="font-medium text-blue-700 mb-2">Try asking questions like:</p>
+            <p className="font-medium text-blue-700 mb-2">
+              Try asking questions like:
+            </p>
             <ul className="space-y-1 text-blue-600 list-disc pl-5">
               <li>How much did I spend on dining last month?</li>
               <li>What are my biggest expense categories?</li>
@@ -39,32 +64,36 @@ export function Workspace({ content }) {
       </div>
     );
   }
-  
+
   // Render different workspace content based on type
   return (
     <div className="h-full border rounded-lg overflow-y-auto">
       <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-        <h2 className="text-lg font-medium">{activeContent.title || 'Workspace'}</h2>
+        <h2 className="text-lg font-medium">
+          {activeContent.title || "Workspace"}
+        </h2>
       </div>
-      
-      <div className="p-4">
-        {renderWorkspaceContent(activeContent)}
-      </div>
+
+      <div className="p-4">{renderWorkspaceContent(activeContent)}</div>
     </div>
   );
 }
 
 function renderWorkspaceContent(content) {
   switch (content.type) {
-    case 'chart':
+    case "chart":
       return <DiningExpensesChart data={content.data} />;
-    case 'expenseBreakdown':
+    case "taxes":
+      return <TaxWorkspace taxData={content.data} />;
+    case "taxInfo":
+      return <TaxInfoWorkspace data={content.data} />;
+    case "expenseBreakdown":
       return <ExpenseBreakdown data={content.data} />;
-    case 'incomeTrend':
+    case "incomeTrend":
       return <IncomeTrend data={content.data} />;
-    case 'budget':
+    case "budget":
       return <BudgetOptimization data={content.data} />;
-    case 'taxes':
+    case "taxes":
       return <TaxPreparation data={content.data} />;
     default:
       return (
@@ -78,20 +107,20 @@ function renderWorkspaceContent(content) {
 function DiningExpensesChart({ data }) {
   // Generate sample daily data
   const dailyData = Array.from({ length: 30 }, (_, i) => {
-    const day = format(subDays(new Date(), 30 - i), 'MMM d');
+    const day = format(subDays(new Date(), 30 - i), "MMM d");
     return {
       day,
-      amount: Math.random() * 25 + 5 // Random amount between $5 and $30
+      amount: Math.random() * 25 + 5, // Random amount between $5 and $30
     };
   });
-  
+
   // Make sure the total matches the passed amount
   const totalGenerated = dailyData.reduce((sum, item) => sum + item.amount, 0);
   const scale = data.amount / totalGenerated;
-  dailyData.forEach(item => {
+  dailyData.forEach((item) => {
     item.amount = parseFloat((item.amount * scale).toFixed(2));
   });
-  
+
   return (
     <Card>
       <CardHeader>
@@ -112,17 +141,22 @@ function DiningExpensesChart({ data }) {
               </div>
               <div className="flex justify-between">
                 <span>Average per Day:</span>
-                <span className="font-medium">${(data.amount / 30).toFixed(2)}</span>
+                <span className="font-medium">
+                  ${(data.amount / 30).toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
-          
+
           <div>
             <h3 className="text-lg font-medium mb-2">Daily Breakdown</h3>
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyData}>
-                  <XAxis dataKey="day" tickFormatter={(value) => value.split(' ')[1]} />
+                  <XAxis
+                    dataKey="day"
+                    tickFormatter={(value) => value.split(" ")[1]}
+                  />
                   <YAxis tickFormatter={(value) => `$${value}`} />
                   <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
                   <Bar dataKey="amount" fill="#0088FE" />
@@ -155,34 +189,44 @@ function ExpenseBreakdown({ data }) {
                   outerRadius={80}
                   dataKey="percentage"
                   nameKey="name"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                 >
                   {data.categories.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => `${value}%`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          
+
           <div>
             <h3 className="text-lg font-medium mb-3">Category Breakdown</h3>
             <div className="space-y-3">
               {data.categories.map((category, index) => (
                 <div key={index} className="flex items-center">
-                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                  <div
+                    className="w-3 h-3 rounded-full mr-2"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  ></div>
                   <div className="flex-1">
                     <div className="flex justify-between">
                       <span>{category.name}</span>
-                      <span className="font-medium">{category.percentage}%</span>
+                      <span className="font-medium">
+                        {category.percentage}%
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 h-1.5 mt-1 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full rounded-full" 
-                        style={{ 
+                      <div
+                        className="h-full rounded-full"
+                        style={{
                           width: `${category.percentage}%`,
-                          backgroundColor: COLORS[index % COLORS.length]
+                          backgroundColor: COLORS[index % COLORS.length],
                         }}
                       ></div>
                     </div>
@@ -203,11 +247,11 @@ function IncomeTrend({ data }) {
     const date = new Date();
     date.setMonth(date.getMonth() - 11 + i);
     return {
-      month: format(date, 'MMM'),
-      income: Math.random() * 1000 + data.averageMonthly - 500 // Random variation around average
+      month: format(date, "MMM"),
+      income: Math.random() * 1000 + data.averageMonthly - 500, // Random variation around average
     };
   });
-  
+
   return (
     <Card>
       <CardHeader>
@@ -219,7 +263,7 @@ function IncomeTrend({ data }) {
             <TabsTrigger value="trend">Monthly Trend</TabsTrigger>
             <TabsTrigger value="sources">Income Sources</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="trend">
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -232,11 +276,18 @@ function IncomeTrend({ data }) {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 text-center">
-              <div className="text-lg">Average Monthly Income: <span className="font-medium">${data.averageMonthly.toFixed(2)}</span></div>
-              <div className="text-sm text-gray-500">Based on the last 12 months of financial data</div>
+              <div className="text-lg">
+                Average Monthly Income:{" "}
+                <span className="font-medium">
+                  ${data.averageMonthly.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-sm text-gray-500">
+                Based on the last 12 months of financial data
+              </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="sources">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="h-64 flex justify-center items-center">
@@ -250,34 +301,46 @@ function IncomeTrend({ data }) {
                       outerRadius={80}
                       dataKey="percentage"
                       nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
                     >
                       {data.sources.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value) => `${value}%`} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-medium mb-3">Income Sources</h3>
                 <div className="space-y-3">
                   {data.sources.map((source, index) => (
                     <div key={index} className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <div
+                        className="w-3 h-3 rounded-full mr-2"
+                        style={{
+                          backgroundColor: COLORS[index % COLORS.length],
+                        }}
+                      ></div>
                       <div className="flex-1">
                         <div className="flex justify-between">
                           <span>{source.name}</span>
-                          <span className="font-medium">{source.percentage}%</span>
+                          <span className="font-medium">
+                            {source.percentage}%
+                          </span>
                         </div>
                         <div className="w-full bg-gray-200 h-1.5 mt-1 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full rounded-full" 
-                            style={{ 
+                          <div
+                            className="h-full rounded-full"
+                            style={{
                               width: `${source.percentage}%`,
-                              backgroundColor: COLORS[index % COLORS.length]
+                              backgroundColor: COLORS[index % COLORS.length],
                             }}
                           ></div>
                         </div>
@@ -285,12 +348,15 @@ function IncomeTrend({ data }) {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-700">Financial Insight</h4>
+                  <h4 className="font-medium text-blue-700">
+                    Financial Insight
+                  </h4>
                   <p className="text-sm text-blue-600 mt-1">
-                    Having multiple income sources increases your financial stability. 
-                    Consider exploring additional income streams for greater financial security.
+                    Having multiple income sources increases your financial
+                    stability. Consider exploring additional income streams for
+                    greater financial security.
                   </p>
                 </div>
               </div>
@@ -312,12 +378,18 @@ function BudgetOptimization({ data }) {
         <div className="mb-6">
           <div className="flex justify-between mb-2">
             <div>
-              <span className="text-sm text-gray-500">Current Monthly Savings</span>
+              <span className="text-sm text-gray-500">
+                Current Monthly Savings
+              </span>
               <div className="text-lg font-medium">${data.currentSavings}</div>
             </div>
             <div className="text-right">
-              <span className="text-sm text-gray-500">Potential Monthly Savings</span>
-              <div className="text-lg font-medium text-green-600">${data.potentialSavings}</div>
+              <span className="text-sm text-gray-500">
+                Potential Monthly Savings
+              </span>
+              <div className="text-lg font-medium text-green-600">
+                ${data.potentialSavings}
+              </div>
             </div>
           </div>
           <div className="relative pt-1">
@@ -334,19 +406,37 @@ function BudgetOptimization({ data }) {
               </div>
             </div>
             <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
-              <div style={{ width: `${(data.currentSavings / data.potentialSavings) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
-              <div style={{ width: `${((data.potentialSavings - data.currentSavings) / data.potentialSavings) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"></div>
+              <div
+                style={{
+                  width: `${
+                    (data.currentSavings / data.potentialSavings) * 100
+                  }%`,
+                }}
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+              ></div>
+              <div
+                style={{
+                  width: `${
+                    ((data.potentialSavings - data.currentSavings) /
+                      data.potentialSavings) *
+                    100
+                  }%`,
+                }}
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+              ></div>
             </div>
           </div>
         </div>
-        
+
         <h3 className="text-lg font-medium mb-3">Suggested Adjustments</h3>
         <div className="space-y-4">
           {data.adjustments.map((item, index) => (
             <div key={index} className="border rounded-lg p-3">
               <div className="flex justify-between mb-2">
                 <div className="font-medium">{item.category}</div>
-                <div className="text-green-600 font-medium">Save ${item.current - item.suggested}</div>
+                <div className="text-green-600 font-medium">
+                  Save ${item.current - item.suggested}
+                </div>
               </div>
               <div className="flex justify-between text-sm text-gray-500 mb-2">
                 <div>Current: ${item.current}</div>
@@ -354,19 +444,35 @@ function BudgetOptimization({ data }) {
               </div>
               <div className="relative pt-1">
                 <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
-                  <div style={{ width: `${(item.suggested / item.current) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
-                  <div style={{ width: `${((item.current - item.suggested) / item.current) * 100}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-red-300"></div>
+                  <div
+                    style={{
+                      width: `${(item.suggested / item.current) * 100}%`,
+                    }}
+                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                  ></div>
+                  <div
+                    style={{
+                      width: `${
+                        ((item.current - item.suggested) / item.current) * 100
+                      }%`,
+                    }}
+                    className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-red-300"
+                  ></div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-        
+
         <div className="mt-6 p-4 bg-green-50 rounded-lg">
           <h4 className="font-medium text-green-700">Action Plan</h4>
           <p className="text-sm text-green-600 mt-1">
-            Following these recommendations could increase your monthly savings by ${data.potentialSavings - data.currentSavings}, 
-            which is a {((data.potentialSavings / data.currentSavings - 1) * 100).toFixed(0)}% improvement!
+            Following these recommendations could increase your monthly savings
+            by ${data.potentialSavings - data.currentSavings}, which is a{" "}
+            {((data.potentialSavings / data.currentSavings - 1) * 100).toFixed(
+              0
+            )}
+            % improvement!
           </p>
         </div>
       </CardContent>
@@ -381,7 +487,7 @@ function TaxPreparation({ data }) {
         <CardTitle>Quarterly Tax Preparation</CardTitle>
       </CardHeader>
       <CardContent>
-        {data.step === 'gathering-info' && (
+        {data.step === "gathering-info" && (
           <div>
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-3">Information Needed</h3>
@@ -412,9 +518,11 @@ function TaxPreparation({ data }) {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-700 mb-2">Tax Preparation Process</h4>
+              <h4 className="font-medium text-blue-700 mb-2">
+                Tax Preparation Process
+              </h4>
               <ol className="text-sm text-blue-600 space-y-2 ml-5 list-decimal">
                 <li>Gather all income and expense information</li>
                 <li>Categorize expenses according to tax deduction rules</li>
@@ -423,7 +531,7 @@ function TaxPreparation({ data }) {
                 <li>Set up reminders for future tax deadlines</li>
               </ol>
             </div>
-            
+
             <div className="mt-6 p-4 bg-amber-50 rounded-lg">
               <h4 className="font-medium text-amber-700">Important Dates</h4>
               <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
@@ -450,4 +558,4 @@ function TaxPreparation({ data }) {
       </CardContent>
     </Card>
   );
-} 
+}

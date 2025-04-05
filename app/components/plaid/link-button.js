@@ -2,12 +2,12 @@
 
 import { useState, useCallback } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
-import { useAuth } from '@/providers/auth-provider';
+import { useAuth } from '../../../providers/auth-provider';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '../../../hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+import { functions } from '../../../lib/firebase';
 
 export function PlaidLinkButton({ className }) {
   const [loading, setLoading] = useState(false);

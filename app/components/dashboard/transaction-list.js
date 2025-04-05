@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '../../../lib/firebase';
 import { Button } from '@/components/ui/button';
 import { TransactionItem } from './transaction-item';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

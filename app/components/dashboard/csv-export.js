@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/providers/auth-provider';
+import { db } from '../../../lib/firebase';
+import { useAuth } from '../../../providers/auth-provider';
 import { CSVLink } from 'react-csv';
 import { format, subMonths } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';

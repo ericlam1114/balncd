@@ -1,7 +1,10 @@
+// Update your app/page.js with this code:
+
 "use client";
 
 import { useToast } from "../hooks/use-toast.js";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function Home() {
   const { toast } = useToast();
@@ -25,6 +28,17 @@ export default function Home() {
         <h1 className="text-5xl font-bold mb-4 text-gray-900">Balncd - Financial Zen</h1>
         <p className="text-xl text-gray-700 mb-8">A calm, minimal personal finance dashboard</p>
         
+        {/* Navigation Links */}
+        <div className="flex justify-center gap-4 mb-8">
+          <Link href="/login" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-colors duration-300">
+            Login
+          </Link>
+          <Link href="/register" className="px-6 py-3 bg-white hover:bg-gray-100 text-blue-600 font-medium rounded-lg shadow-md border border-blue-200 transition-colors duration-300">
+            Create Account
+          </Link>
+        </div>
+        
+        {/* Toast Demo Buttons */}
         <div className="flex flex-wrap gap-3 justify-center">
           <button
             onClick={() => {

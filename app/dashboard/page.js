@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/providers/auth-provider';
-import { TransactionList } from '@/components/dashboard/transaction-list';
-import { CashFlowChart } from '@/components/dashboard/cash-flow-chart';
-import { CategoryChart } from '@/components/dashboard/category-chart';
-import { VibeScore } from '@/components/dashboard/vibe-score';
-import { AccountsSummary } from '@/components/dashboard/accounts-summary';
-import { CSVExport } from '@/components/dashboard/csv-export';
-import { PlaidLinkButton } from '@/components/plaid/link-button';
+import { db } from '../../lib/firebase';
+import { useAuth } from '../../providers/auth-provider';
+import { TransactionList } from '../components/dashboard/transaction-list';
+import { CashFlowChart } from '../components/dashboard/cash-flow-chart';
+import { CategoryChart } from '../components/dashboard/category-chart';
+import { VibeScore } from '../components/dashboard/vibe-score';
+import { AccountsSummary } from '../components/dashboard/accounts-summary';
+import { CSVExport } from '../components/dashboard/csv-export';
+import { PlaidLinkButton } from '../components/plaid/link-button';
 import { format, subMonths } from 'date-fns';
 import { Button } from '@/components/ui/button';
 

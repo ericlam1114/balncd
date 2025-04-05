@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "../hooks/use-toast.js";
 import { AuthProvider } from "../providers/auth-provider";
-import { Toaster } from "../components/ui/toaster";
+// Remove this: import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         <ToastProvider>
           <AuthProvider>
             {children}
-            <Toaster />
+            {/* Remove the Sonner <Toaster /> component here */}
           </AuthProvider>
         </ToastProvider>
       </body>

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/providers/auth-provider';
+import { db } from '../../../lib/firebase';
+import { useAuth } from '../../../providers/auth-provider';
 import { motion } from 'framer-motion';
 import { format, subMonths } from 'date-fns';
 

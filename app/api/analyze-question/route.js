@@ -1,3 +1,4 @@
+// app/api/analyze-question/route.js
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -17,7 +18,9 @@ export async function POST(request) {
           content: `You are a financial assistant that categorizes user questions. 
                     Categorize the question into one of these categories: 
                     'tax', 'budget', 'income', 'expenses', 'investments', 'other'.
-                    Also determine if the question requires numerical calculations.`,
+                    Also determine if the question requires numerical calculations.
+                    Detect mentions of specific quarters (Q1, Q2, Q3, Q4) and
+                    U.S. states. Also detect if this is a follow-up to a previous question.`,
         },
         {
           role: "user",
@@ -49,9 +52,18 @@ export async function POST(request) {
                 description:
                   "Whether the question requires numerical calculations",
               },
+              isFollowUp: {
+                type: "boolean",
+                description:
+                  "Whether this appears to be a follow-up to a previous question",
+              },
               specifics: {
                 type: "object",
                 properties: {
+                  period: {
+                    type: "string",
+                    description: "Fiscal period mentioned (e.g., 'Q1', 'Q2')",
+                  },
                   state: {
                     type: "string",
                     description: "US state mentioned in the question, if any",
@@ -59,12 +71,12 @@ export async function POST(request) {
                   timeframe: {
                     type: "string",
                     description:
-                      "Timeframe mentioned in the question (e.g., 'Q1', '2023', 'April')",
+                      "Timeframe mentioned in the question (e.g., '2023', 'April')",
                   },
                 },
               },
             },
-            required: ["category", "isCalculation"],
+            required: ["category", "isCalculation", "isFollowUp"],
           },
         },
       ],

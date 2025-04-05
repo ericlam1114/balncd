@@ -1,3 +1,4 @@
+// app/api/tax-information/route.js
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
@@ -7,19 +8,30 @@ const openai = new OpenAI({
 
 export async function POST(request) {
   try {
-    const { question } = await request.json();
+    const { question, previousMessages } = await request.json();
     
-    // Use OpenAI to get tax information
+    // Include conversation context for better responses
+    const conversationContext = previousMessages 
+      ? previousMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      : [];
+    
+    // Use OpenAI to get tax information with conversation context
     const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
           content: `You are a helpful financial assistant specializing in tax information.
                     Provide accurate, concise answers to tax-related questions.
                     If you don't know the exact answer, acknowledge the limitation
-                    and provide general information that might be helpful.`
+                    and provide general information that might be helpful.
+                    Be conversational but precise. When asked for rationales or
+                    explanations of previous answers, provide them clearly.`
         },
+        ...conversationContext,
         {
           role: "user",
           content: question
@@ -47,6 +59,10 @@ export async function POST(request) {
               type: "string",
               enum: ["high", "medium", "low"],
               description: "Confidence level in the accuracy of the answer"
+            },
+            isFollowUp: {
+              type: "boolean",
+              description: "Whether this is answering a follow-up question"
             }
           },
           required: ["answer", "confidence"]

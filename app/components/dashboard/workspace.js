@@ -42,18 +42,18 @@ export function Workspace({ content }) {
 
   if (!activeContent) {
     return (
-      <div className="h-full flex items-center justify-center border rounded-lg p-8">
-        <div className="text-center max-w-md">
-          <h3 className="text-xl font-medium mb-2">Your Financial Workspace</h3>
-          <p className="text-gray-500 mb-4">
+      <div className="h-full flex items-center justify-center p-8 bg-gray-50/50">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-xl font-medium mb-3">Your Financial Workspace</h3>
+          <p className="text-gray-500 mb-6">
             Ask questions in the chat to analyze your finances. Financial data
             and visualizations will appear here.
           </p>
-          <div className="text-sm text-left bg-blue-50 p-4 rounded-lg">
-            <p className="font-medium text-blue-700 mb-2">
+          <div className="text-sm text-left bg-blue-50/70 p-5 rounded-lg border border-blue-100">
+            <p className="font-medium text-blue-700 mb-3">
               Try asking questions like:
             </p>
-            <ul className="space-y-1 text-blue-600 list-disc pl-5">
+            <ul className="space-y-2 text-blue-700 list-disc pl-5">
               <li>How much did I spend on dining last month?</li>
               <li>What are my biggest expense categories?</li>
               <li>Help me prepare for quarterly taxes</li>
@@ -67,41 +67,48 @@ export function Workspace({ content }) {
 
   // Render different workspace content based on type
   return (
-    <div className="h-full border rounded-lg overflow-y-auto">
-      <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-        <h2 className="text-lg font-medium">
-          {activeContent.title || "Workspace"}
-        </h2>
-      </div>
-
+    <div className="h-full overflow-y-auto">
       <div className="p-4">{renderWorkspaceContent(activeContent)}</div>
     </div>
   );
 }
 
 function renderWorkspaceContent(content) {
-  switch (content.type) {
-    case "chart":
-      return <DiningExpensesChart data={content.data} />;
-    case "taxes":
-      return <TaxWorkspace taxData={content.data} />;
-    case "taxInfo":
-      return <TaxInfoWorkspace data={content.data} />;
-    case "expenseBreakdown":
-      return <ExpenseBreakdown data={content.data} />;
-    case "incomeTrend":
-      return <IncomeTrend data={content.data} />;
-    case "budget":
-      return <BudgetOptimization data={content.data} />;
-    case "taxes":
-      return <TaxPreparation data={content.data} />;
-    default:
-      return (
-        <div className="text-center p-8">
-          <p>No visualization available for this query.</p>
-        </div>
-      );
-  }
+  // Create a container with consistent styling for all content types
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <h2 className="text-xl font-medium mb-5 text-gray-800">
+        {content.title || "Analysis"}
+      </h2>
+      
+      <div className="space-y-6">
+        {(() => {
+          switch (content.type) {
+            case "chart":
+              return <DiningExpensesChart data={content.data} />;
+            case "taxes":
+              return <TaxWorkspace taxData={content.data} />;
+            case "taxInfo":
+              return <TaxInfoWorkspace data={content.data} />;
+            case "expenseBreakdown":
+              return <ExpenseBreakdown data={content.data} />;
+            case "incomeTrend":
+              return <IncomeTrend data={content.data} />;
+            case "budget":
+              return <BudgetOptimization data={content.data} />;
+            case "taxPreparation":
+              return <TaxPreparation data={content.data} />;
+            default:
+              return (
+                <div className="text-center p-8 bg-gray-50 rounded-lg">
+                  <p>No visualization available for this query.</p>
+                </div>
+              );
+          }
+        })()}
+      </div>
+    </div>
+  );
 }
 
 function DiningExpensesChart({ data }) {
@@ -242,127 +249,130 @@ function ExpenseBreakdown({ data }) {
 }
 
 function IncomeTrend({ data }) {
+  if (data.noData) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle>Income Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="text-4xl font-bold text-gray-300 mb-4">$0</div>
+            <p className="text-gray-500 mb-6">
+              No income transactions found for the selected period.
+            </p>
+            <p className="text-sm text-gray-400">
+              Connect your accounts with income transactions to see your income analysis.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // Generate sample monthly data for a year
-  const monthlyData = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 11 + i);
-    return {
-      month: format(date, "MMM"),
-      income: Math.random() * 1000 + data.averageMonthly - 500, // Random variation around average
-    };
-  });
+  const monthlySummary = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const month = new Date(now);
+    month.setMonth(month.getMonth() - i);
+    
+    // For the last 3 months use the actual average, for others use a variation
+    let amount = data.averageMonthly;
+    if (i > 2) {
+      // Add some random variation for older months
+      const variation = Math.random() * 0.2 - 0.1; // -10% to +10%
+      amount = amount * (1 + variation);
+    }
+    
+    monthlySummary.push({
+      month: format(month, 'MMM'),
+      amount: Math.round(amount),
+    });
+  }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <CardTitle>Income Analysis</CardTitle>
+        <CardTitle>{data.title || "Income Trends"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="trend">
-          <TabsList className="mb-4">
-            <TabsTrigger value="trend">Monthly Trend</TabsTrigger>
-            <TabsTrigger value="sources">Income Sources</TabsTrigger>
-          </TabsList>
+        <div className="space-y-8">
+          <div className="flex flex-col items-center text-center">
+            <div className="text-xs text-gray-500 uppercase">
+              Average Monthly Income
+            </div>
+            <div className="text-3xl font-bold">
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(data.averageMonthly)}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Based on {data.period || "recent history"}
+            </div>
+          </div>
 
-          <TabsContent value="trend">
-            <div className="h-64">
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlySummary} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                <XAxis dataKey="month" />
+                <YAxis
+                  tickFormatter={(value) =>
+                    new Intl.NumberFormat('en-US', {
+                      notation: 'compact',
+                      compactDisplay: 'short',
+                      currency: 'USD',
+                      style: 'currency',
+                    }).format(value)
+                  }
+                />
+                <Tooltip
+                  formatter={(value) =>
+                    new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                    }).format(value)
+                  }
+                />
+                <Bar dataKey="amount" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium mb-3">Income Breakdown</h4>
+            <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `$${value}`} />
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
-                  <Bar dataKey="income" fill="#00C49F" />
-                </BarChart>
+                <PieChart>
+                  <Pie
+                    data={data.sources}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    dataKey="percentage"
+                    nameKey="name"
+                    label={({ name, percentage }) => `${name} ${percentage}%`}
+                  >
+                    {data.sources.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, name, props) => [
+                      `${value}%`,
+                      props.payload.name,
+                    ]}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 text-center">
-              <div className="text-lg">
-                Average Monthly Income:{" "}
-                <span className="font-medium">
-                  ${data.averageMonthly.toFixed(2)}
-                </span>
-              </div>
-              <div className="text-sm text-gray-500">
-                Based on the last 12 months of financial data
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="sources">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="h-64 flex justify-center items-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data.sources}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      dataKey="percentage"
-                      nameKey="name"
-                      label={({ name, percent }) =>
-                        `${name} ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {data.sources.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium mb-3">Income Sources</h3>
-                <div className="space-y-3">
-                  {data.sources.map((source, index) => (
-                    <div key={index} className="flex items-center">
-                      <div
-                        className="w-3 h-3 rounded-full mr-2"
-                        style={{
-                          backgroundColor: COLORS[index % COLORS.length],
-                        }}
-                      ></div>
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <span>{source.name}</span>
-                          <span className="font-medium">
-                            {source.percentage}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 h-1.5 mt-1 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${source.percentage}%`,
-                              backgroundColor: COLORS[index % COLORS.length],
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-700">
-                    Financial Insight
-                  </h4>
-                  <p className="text-sm text-blue-600 mt-1">
-                    Having multiple income sources increases your financial
-                    stability. Consider exploring additional income streams for
-                    greater financial security.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

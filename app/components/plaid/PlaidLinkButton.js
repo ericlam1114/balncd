@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
 export function PlaidLinkButton({ className }) {
@@ -16,7 +16,7 @@ export function PlaidLinkButton({ className }) {
   const createLinkToken = async () => {
     setLoading(true);
     try {
-      // Get user's Firebase auth token
+      // Get Firebase auth token
       const idToken = await user.getIdToken();
       
       // Call our API endpoint to create a link token
@@ -31,12 +31,13 @@ export function PlaidLinkButton({ className }) {
       if (!response.ok) throw new Error('Failed to create link token');
       
       const data = await response.json();
+      console.log('Link token created:', data);
       return data.linkToken;
     } catch (error) {
       console.error('Error creating link token:', error);
       toast({
         title: 'Error',
-        description: 'Could not initialize bank connection',
+        description: 'Could not initialize bank connection. ' + error.message,
         variant: 'destructive',
       });
       return null;
@@ -45,7 +46,7 @@ export function PlaidLinkButton({ className }) {
     }
   };
 
-  // Handle Plaid Link success
+  // Handle success
   const onSuccess = useCallback(async (publicToken, metadata) => {
     toast({
       title: 'Account connected',
@@ -68,7 +69,10 @@ export function PlaidLinkButton({ className }) {
         }),
       });
       
-      if (!response.ok) throw new Error('Failed to process accounts');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to process accounts');
+      }
       
       const result = await response.json();
       
@@ -83,7 +87,7 @@ export function PlaidLinkButton({ className }) {
       console.error('Error processing accounts:', error);
       toast({
         title: 'Error',
-        description: 'Failed to process your accounts',
+        description: 'Failed to process your accounts: ' + error.message,
         variant: 'destructive',
       });
     }
@@ -91,14 +95,29 @@ export function PlaidLinkButton({ className }) {
 
   // Initialize Plaid Link
   const config = {
-    token: null, // Will be set when the button is clicked
+    token: null,
     onSuccess,
-    onExit: () => {
-      toast({
-        title: 'Connection canceled',
-        description: 'You canceled the account connection process.',
-      });
+    onExit: (err) => {
+      if (err != null) {
+        // The user encountered an error while linking
+        console.error('Plaid Link exit error:', err);
+        toast({
+          title: 'Connection Error',
+          description: err.display_message || err.error_message || 'An error occurred during account connection.',
+          variant: 'destructive',
+        });
+      } else {
+        // The user exited the Link flow
+        toast({
+          title: 'Connection canceled',
+          description: 'You canceled the account connection process.',
+        });
+      }
     },
+    // Additional Plaid Link configuration
+    env: 'sandbox',
+    product: ['transactions'],
+    countryCodes: ['US'],
   };
 
   const { open, ready } = usePlaidLink(config);

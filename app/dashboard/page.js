@@ -11,8 +11,11 @@ import { VibeScore } from '../components/dashboard/vibe-score';
 import { AccountsSummary } from '../components/dashboard/accounts-summary';
 import { CSVExport } from '../components/dashboard/csv-export';
 import { PlaidLinkButton } from '../components/plaid/link-button';
+import { ChatInterface } from '../components/dashboard/chat-interface';
+import { Workspace } from '../components/dashboard/workspace';
 import { format, subMonths } from 'date-fns';
-import { Button } from '@/components/ui/button';
+import { Button } from '../../src/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../src/components/ui/tabs';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -23,6 +26,8 @@ export default function DashboardPage() {
     totalBalance: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [workspaceContent, setWorkspaceContent] = useState(null);
+  const [view, setView] = useState('overview'); // 'overview', 'assistant'
 
   // Fetch accounts and summary data
   useEffect(() => {
@@ -42,6 +47,15 @@ export default function DashboardPage() {
           ...doc.data(),
         }));
         setAccounts(accountsData);
+
+        // If this is the user's first time connecting accounts, show the assistant view
+        if (accountsData.length > 0) {
+          const hasVisitedBefore = localStorage.getItem('hasVisitedDashboard');
+          if (!hasVisitedBefore) {
+            setView('assistant');
+            localStorage.setItem('hasVisitedDashboard', 'true');
+          }
+        }
 
         // Calculate total balance
         const totalBalance = accountsData.reduce((sum, account) => 
@@ -110,32 +124,62 @@ export default function DashboardPage() {
     );
   }
 
+  // Handle workspace content updates from the chat
+  const handleWorkspaceUpdate = (content) => {
+    setWorkspaceContent(content);
+    // Auto-switch to the assistant view when content is updated from chat
+    setView('assistant');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-2xl font-medium">Financial Dashboard</h1>
-        <CSVExport />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <AccountsSummary 
-          accounts={accounts} 
-          totalBalance={financialSummary.totalBalance} 
-        />
-        <div className="md:col-span-2">
-          <VibeScore 
-            income={financialSummary.income} 
-            expenses={financialSummary.expenses} 
-          />
+        <div className="flex items-center gap-4">
+          <Tabs value={view} onValueChange={setView} className="w-[300px]">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="assistant">Financial Assistant</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {view === 'overview' && <CSVExport />}
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <CashFlowChart />
-        <CategoryChart />
-      </div>
-      
-      <TransactionList />
+      {view === 'overview' ? (
+        // Overview dashboard
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <AccountsSummary 
+              accounts={accounts} 
+              totalBalance={financialSummary.totalBalance} 
+            />
+            <div className="md:col-span-2">
+              <VibeScore 
+                income={financialSummary.income} 
+                expenses={financialSummary.expenses} 
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CashFlowChart />
+            <CategoryChart />
+          </div>
+          
+          <TransactionList />
+        </div>
+      ) : (
+        // Financial assistant with chat interface and workspace
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[calc(100vh-12rem)]">
+          <div className="lg:col-span-2 h-full">
+            <ChatInterface onWorkspaceUpdate={handleWorkspaceUpdate} />
+          </div>
+          <div className="lg:col-span-3 h-full">
+            <Workspace content={workspaceContent} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

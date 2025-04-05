@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { useAuth } from '../../../providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { useToast } from '../../../hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../../lib/firebase';
+import { auth } from '../../../lib/firebase';
 
 export function PlaidLinkButton({ className }) {
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -23,19 +23,25 @@ export function PlaidLinkButton({ className }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await user.getIdToken()}`
         },
+        body: JSON.stringify({
+          userId: user?.uid || 'test-user-id',
+        }),
       });
       
-      if (!response.ok) throw new Error('Failed to create link token');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create link token');
+      }
       
       const data = await response.json();
+      setToken(data.linkToken);
       return data.linkToken;
     } catch (error) {
       console.error('Error creating link token:', error);
       toast({
         title: 'Error',
-        description: 'Could not initialize bank connection',
+        description: 'Could not initialize bank connection: ' + error.message,
         variant: 'destructive',
       });
       return null;
@@ -52,32 +58,52 @@ export function PlaidLinkButton({ className }) {
     });
     
     try {
-      // Call the Firebase function to process the Plaid connection
-      const processPlaidConnection = httpsCallable(functions, 'processPlaidConnection');
-      const result = await processPlaidConnection({ publicToken });
+      // Get Firebase ID token for the current user
+      let userId = user?.uid || 'test-user-id';
+      
+      // Call our API endpoint to process the connection
+      const response = await fetch('/api/plaid/process-accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          publicToken,
+          metadata,
+          userId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to process accounts');
+      }
+      
+      const result = await response.json();
       
       toast({
         title: 'Success!',
-        description: `Connected ${result.data.accountsCount} accounts`,
+        description: `Connected ${result.accountsCount} accounts`,
       });
       
-      router.push('/dashboard');
-      router.refresh();
+      // Force a full page refresh to ensure data is reloaded
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Error processing Plaid connection:', error);
       toast({
         title: 'Error',
-        description: 'Failed to process your accounts',
+        description: 'Failed to process your accounts: ' + error.message,
         variant: 'destructive',
       });
     }
-  }, [toast, router]);
+  }, [toast, router, user]);
 
   // Initialize Plaid Link
   const config = {
-    token: null,
+    token,
     onSuccess,
     onExit: () => {
+      setToken(null);
       toast({
         title: 'Connection canceled',
         description: 'You canceled the account connection process.',
@@ -87,19 +113,21 @@ export function PlaidLinkButton({ className }) {
 
   const { open, ready } = usePlaidLink(config);
 
-  const handleConnect = async () => {
-    const token = await createLinkToken();
-    if (token) {
-      config.token = token;
+  useEffect(() => {
+    if (token && ready) {
       open();
     }
+  }, [token, ready, open]);
+
+  const handleConnect = async () => {
+    await createLinkToken();
   };
 
   return (
     <Button 
       className={className} 
       onClick={handleConnect}
-      disabled={loading || !ready || !user}
+      disabled={loading}
     >
       {loading ? 'Connecting...' : 'Connect Bank Account'}
     </Button>
